@@ -24,7 +24,7 @@ def predict():
     outputs = model(**inputs)
     attentions = outputs.attentions
 
-    # Simplified demonstration: get the token with highest attention from the last token in the input
+    # get the token with highest attention from the last token in the input
     last_token_attention = attentions[-1][0][-1].detach().numpy()
     most_attended_token_id = np.argmax(last_token_attention)
     most_attended_token = tokenizer.decode([most_attended_token_id])
