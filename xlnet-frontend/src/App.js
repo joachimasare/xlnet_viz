@@ -8,7 +8,7 @@ function XLNetPrompter() {
   const [mostAttendedToken, setMostAttendedToken] = useState('');  // New state
 
   const handlePredict = async () => {
-      const response = await axios.post('/predict', { prompt });
+      const response = await axios.post('http://localhost:5000/predict', { prompt });
       setAttentions(response.data.attentions);
       setMostAttendedToken(response.data.most_attended_token);  // Update state
   };
