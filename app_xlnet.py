@@ -1,14 +1,15 @@
 from flask import Flask, request, jsonify
-from transformers import GPT2Tokenizer, GPT2LMHeadModel  # We're switching to GPT-2 classes
+from transformers import XLNetTokenizer, XLNetLMHeadModel, top_k_top_p_filtering
 import torch
 from flask_cors import CORS
+import numpy as np
 
 app = Flask(__name__)
 CORS(app)
 
-# Load GPT-2 model and tokenizer
-model = GPT2LMHeadModel.from_pretrained('gpt2-medium', output_attentions=True)  # Using 'gpt2-medium' for demonstration
-tokenizer = GPT2Tokenizer.from_pretrained('gpt2-medium')
+# Load XLNet model and tokenizer
+model = XLNetLMHeadModel.from_pretrained('xlnet-base-cased', output_attentions=True)
+tokenizer = XLNetTokenizer.from_pretrained('xlnet-base-cased')
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -22,13 +23,17 @@ def predict():
     outputs = model(**inputs)
     attentions = outputs.attentions
 
-    # Get the model's predicted response
-    predicted_response_tokens = outputs.logits.argmax(dim=-1)
-    predicted_response = tokenizer.decode(predicted_response_tokens[0])
+    # Use top-k sampling for generating text
+    logits = outputs.logits[:, -1, :]
+    filtered_logits = top_k_top_p_filtering(logits, top_k=50)  # Top 50 tokens are considered
+    probabilities = torch.nn.functional.softmax(filtered_logits, dim=-1)
+    predicted_token = torch.multinomial(probabilities, 1)
 
-    # get the token with highest attention from the last token in the input
-    last_token_attention = attentions[-1][0][-1]
-    most_attended_token_id = torch.argmax(last_token_attention).item()
+    predicted_response = tokenizer.decode(predicted_token[0])
+
+    # Get the token with highest attention from the last token in the input
+    last_token_attention = attentions[-1][0][-1].detach().numpy()
+    most_attended_token_id = np.argmax(last_token_attention)
     most_attended_token = tokenizer.decode([most_attended_token_id])
 
     # Convert attention weights to a list for frontend
